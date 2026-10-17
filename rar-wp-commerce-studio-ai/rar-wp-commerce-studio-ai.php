@@ -21,6 +21,7 @@ final class RAR_WP_Commerce_Studio_AI {
     public static function boot() {
         add_action('admin_menu', array(__CLASS__, 'menu'));
         add_action('admin_enqueue_scripts', array(__CLASS__, 'assets'));
+        add_filter('plugin_action_links_' . plugin_basename(__FILE__), array(__CLASS__, 'plugin_action_links'));
         foreach (array('preview', 'apply_seo', 'restore_seo', 'save_settings', 'generate_api', 'create_image', 'apply_image', 'restore_image') as $action) {
             add_action('admin_post_rar_studio_' . $action, array(__CLASS__, $action));
         }
@@ -66,6 +67,30 @@ final class RAR_WP_Commerce_Studio_AI {
 
     public static function menu() {
         add_menu_page('RAR Commerce Studio', 'RAR Commerce Studio', 'manage_woocommerce', self::SLUG, array(__CLASS__, 'page'), 'dashicons-superhero-alt', 56);
+    }
+
+    /**
+     * Add direct links on Plugins > Installed Plugins, keeping WordPress's
+     * built-in Deactivate action untouched.
+     *
+     * @param array $actions Existing plugin-row actions.
+     * @return array
+     */
+    public static function plugin_action_links($actions) {
+        if (!current_user_can('manage_woocommerce')) {
+            return $actions;
+        }
+
+        $links = array(
+            'rar_studio_dashboard' => '<a href="' . esc_url(self::url()) . '">' . esc_html__('Dashboard', 'rar-wp-commerce-studio-ai') . '</a>',
+        );
+
+        if (current_user_can('manage_options')) {
+            $links['rar_studio_settings'] = '<a href="' . esc_url(self::url() . '#api') . '">' . esc_html__('Settings', 'rar-wp-commerce-studio-ai') . '</a>';
+        }
+
+        // Show Dashboard | Settings | Deactivate, preserving all core/plugin actions.
+        return array_merge($links, $actions);
     }
 
     public static function assets($hook) {
