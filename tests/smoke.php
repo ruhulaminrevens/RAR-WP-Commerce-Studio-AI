@@ -7,6 +7,7 @@ function wp_strip_all_tags($text) { return strip_tags($text); }
 function wp_html_excerpt($text, $count, $more = '') { return strlen($text) > $count ? substr($text, 0, $count) . $more : $text; }
 function get_bloginfo($key) { return 'Example Shop'; }
 require_once __DIR__ . '/../rar-wp-commerce-studio-ai/rar-wp-commerce-studio-ai.php';
+RAR_WP_Commerce_Studio_AI::boot(); // Simulate WordPress plugins_loaded callback.
 
 $reflect = new ReflectionClass('RAR_WP_Commerce_Studio_AI');
 $defaults = $reflect->getMethod('defaults');
