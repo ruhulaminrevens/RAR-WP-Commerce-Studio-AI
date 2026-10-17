@@ -251,6 +251,22 @@ final class RAR_WP_Commerce_Studio_AI {
             case IMAGETYPE_WEBP: $source = function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($file) : false; break;
             default: $source = false;
         }
+        // WordPress/Imagick fallback handles formats such as AVIF when the host supports them.
+        // Conversion happens in a temporary file and never modifies the original image.
+        if (!$source && function_exists('wp_get_image_editor')) {
+            $editor = wp_get_image_editor($file);
+            if (!is_wp_error($editor)) {
+                $temp = wp_tempnam('rar-studio-source');
+                if ($temp) {
+                    $converted = $editor->save($temp . '.png', 'image/png');
+                    if (!is_wp_error($converted) && !empty($converted['path'])) {
+                        $source = @imagecreatefrompng($converted['path']);
+                        wp_delete_file($converted['path']);
+                    }
+                    wp_delete_file($temp);
+                }
+            }
+        }
         if (!$source) { self::redirect($id, 'bad_image'); }
         $canvas = imagecreatetruecolor(800, 800);
         $white = imagecolorallocate($canvas, 255, 255, 255);
