@@ -20,6 +20,7 @@ $reflect = new ReflectionClass('RAR_WP_Commerce_Studio_AI');
 $defaults = $reflect->getMethod('defaults');
 $defaults->setAccessible(true);
 $config = $defaults->invoke(null);
+if (RAR_WP_Commerce_Studio_AI::VERSION !== '0.1.1') { throw new Exception('Plugin version mismatch.'); }
 if ($config['api_enabled'] !== 0) { throw new Exception('API must be off by default.'); }
 foreach (array('gemini', 'openai', 'claude') as $name) {
     if ($config[$name . '_enabled'] !== 0) { throw new Exception('Provider enabled unexpectedly: ' . $name); }
@@ -40,6 +41,7 @@ $links = RAR_WP_Commerce_Studio_AI::plugin_action_links($actions);
 if (array_keys($links) !== array('rar_studio_dashboard', 'rar_studio_settings', 'deactivate')) {
     throw new Exception('Plugin row links must show Dashboard, Settings and retain Deactivate.');
 }
+if (strpos($links['rar_studio_dashboard'], 'admin.php?page=rar-wp-commerce-studio-ai') === false) { throw new Exception('Dashboard shortcut target invalid.'); }
 if (strpos($links['rar_studio_settings'], '#api') === false) {
     throw new Exception('Settings must target API settings section.');
 }
