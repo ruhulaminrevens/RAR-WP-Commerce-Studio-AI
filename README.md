@@ -27,11 +27,17 @@ Your existing ChatGPT Plus/Pro or Claude subscription generally cannot be connec
 
 **API stays OFF on first install and until explicitly enabled.** Product name and descriptions are sent externally only after a permitted administrator initiates a particular API preview request.
 
+## Direct installable ZIP — pilot prerelease
+
+[**Download RAR WP Commerce Studio AI v0.1.0 Pilot (WordPress plugin ZIP)**](https://github.com/ruhulaminrevens/RAR-WP-Commerce-Studio-AI/releases/download/v0.1.0-pilot/rar-wp-commerce-studio-ai.zip)
+
+This is the actual installable WordPress plugin ZIP, not a repository source archive. It is **pre-release / staging-first**, not a certified production build. Do not automatically activate it on a live store before verified backups and a single-product pilot.
+
 ## Installation: no coding required
 
 1. Back up site database and WordPress uploads; preferably verify restore on staging.
-2. Download GitHub repository ZIP and extract it.
-3. Compress only the inner folder named **rar-wp-commerce-studio-ai** to a new ZIP (the folder itself must be ZIP root).
+2. Download the ready-made **v0.1.0 Pilot plugin ZIP** from the direct download link above.
+3. Alternatively, download the repository source, extract it and ZIP only its inner folder named **rar-wp-commerce-studio-ai** (folder at ZIP root).
 4. WordPress → Plugins → Add New → Upload Plugin → select that inner ZIP → Install → Activate.
 5. WordPress left menu → **RAR Commerce Studio**. API remains OFF.
 6. Copy actual numeric product ID from WooCommerce Products → Edit URL: post=PRODUCT_ID.
