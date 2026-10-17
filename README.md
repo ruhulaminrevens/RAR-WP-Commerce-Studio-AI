@@ -1,10 +1,12 @@
 # RAR WP Commerce Studio AI
 
+[![Latest Release](https://img.shields.io/github/v/release/ruhulaminrevens/RAR-WP-Commerce-Studio-AI?label=Latest%20Release)](https://github.com/ruhulaminrevens/RAR-WP-Commerce-Studio-AI/releases/latest) [![WordPress Plugin CI](https://github.com/ruhulaminrevens/RAR-WP-Commerce-Studio-AI/actions/workflows/plugin-ci.yml/badge.svg)](https://github.com/ruhulaminrevens/RAR-WP-Commerce-Studio-AI/actions/workflows/plugin-ci.yml)
+
 **Free-first • Optional AI API • WooCommerce SEO • Product Image Tools • Safe By Default**
 
 Reusable WordPress admin plugin for WooCommerce stores, including [NABIAD](https://www.nabiad.com). It is intended to optimize one product at a time without silently modifying live catalog information.
 
-> Version 0.1.0 is the initial working foundation (pilot). It is not production-certified. Take a verified database + uploads backup and complete staging tests before activating on a live store.
+> **Latest release: v0.1.1 (2026-10-17).** This is the current release for the implemented single-product scope, including the new dark dashboard and plugin-row shortcuts. CI covers syntax and isolated smoke tests; full WooCommerce/Yoast production end-to-end testing remains incomplete. Take a verified database + uploads backup before updating.
 
 ## Implemented features
 
@@ -27,24 +29,27 @@ Your existing ChatGPT Plus/Pro or Claude subscription generally cannot be connec
 
 **API stays OFF on first install and until explicitly enabled.** Product name and descriptions are sent externally only after a permitted administrator initiates a particular API preview request.
 
-## Direct installable ZIP — pilot prerelease
+## Download — latest official release
 
-[**Download RAR WP Commerce Studio AI v0.1.0 Pilot (WordPress plugin ZIP)**](https://github.com/ruhulaminrevens/RAR-WP-Commerce-Studio-AI/releases/download/v0.1.0-pilot/rar-wp-commerce-studio-ai.zip)
+**[⬇ Download WordPress Plugin ZIP — v0.1.1](https://github.com/ruhulaminrevens/RAR-WP-Commerce-Studio-AI/releases/download/v0.1.1/rar-wp-commerce-studio-ai.zip)** (ready to upload in WordPress)
 
-This is the actual installable WordPress plugin ZIP, not a repository source archive. It is **pre-release / staging-first**, not a certified production build. Do not automatically activate it on a live store before verified backups and a single-product pilot.
+**[Latest Release page](https://github.com/ruhulaminrevens/RAR-WP-Commerce-Studio-AI/releases/latest)** · [All releases](https://github.com/ruhulaminrevens/RAR-WP-Commerce-Studio-AI/releases) · [Full source code ZIP](https://github.com/ruhulaminrevens/RAR-WP-Commerce-Studio-AI/archive/refs/heads/main.zip) · [SHA-256 checksum](https://github.com/ruhulaminrevens/RAR-WP-Commerce-Studio-AI/releases/download/v0.1.1/rar-wp-commerce-studio-ai.zip.sha256)
+
+**Important:** The *plugin ZIP* is what you upload in WordPress. The *source ZIP* includes code, CI/tests and docs, and is not itself a ready-to-install plugin package. This latest official release supersedes the archived v0.1.0-pilot package. ZIP installation does **not** provide automatic WordPress updates; install future versions through WordPress or your own update pipeline.
+
+Release notes: [v0.1.1](https://github.com/ruhulaminrevens/RAR-WP-Commerce-Studio-AI/blob/main/docs/RELEASE_NOTES_v0.1.1.md) · [CHANGELOG](https://github.com/ruhulaminrevens/RAR-WP-Commerce-Studio-AI/blob/main/CHANGELOG.md).
 
 ## Installation: no coding required
 
 1. Back up site database and WordPress uploads; preferably verify restore on staging.
-2. Download the ready-made **v0.1.0 Pilot plugin ZIP** from the direct download link above.
-3. Alternatively, download the repository source, extract it and ZIP only its inner folder named **rar-wp-commerce-studio-ai** (folder at ZIP root).
-4. WordPress → Plugins → Add New → Upload Plugin → select that inner ZIP → Install → Activate.
-5. WordPress left menu → **RAR Commerce Studio**. API remains OFF.
-6. Copy actual numeric product ID from WooCommerce Products → Edit URL: post=PRODUCT_ID.
-7. Load product → Generate FREE local SEO preview. Review before Apply; test Restore.
-8. For image tools, test with a non-critical product, review the derivative, approve featured-image swap, then verify Restore.
-
-GitHub Actions builds a separate installable plugin ZIP artifact after successful lint and smoke tests; artifact access/expiration depend on GitHub.
+2. Download the ready-to-install **v0.1.1 ZIP** directly from the download section above.
+3. In WordPress open **Plugins → Add New → Upload Plugin** and select `rar-wp-commerce-studio-ai.zip`.
+4. If v0.1.0 is already installed, choose **Replace current with uploaded**. Do not delete the old plugin first (the slug is unchanged).
+5. Open **Plugins → Installed Plugins → RAR WP Commerce Studio AI → Dashboard | Settings** (or WordPress left menu → **RAR Commerce Studio**). API remains OFF unless you intentionally enabled it earlier.
+6. If upgrading with previously saved settings, verify the existing **API toggle and provider settings** manually — upgrading does not reset saved settings.
+7. Load an existing product using its numeric ID; preview free SEO suggestions without applying.
+8. Test a non-critical product with preview, apply and restore only after reviewing its data.
+GitHub Actions also builds a ZIP artifact on supported CI branches. The Release ZIP link above is the durable public download, unlike expiring Actions artifacts.
 
 ### সহজ বাংলা workflow
 - Product ID load করে **Free local SEO preview** দিন।
@@ -101,12 +106,13 @@ Passing a syntax/smoke check does not substitute for WordPress staging and real 
 ## File layout
 
 - rar-wp-commerce-studio-ai/rar-wp-commerce-studio-ai.php — plugin, permissions, admin UI, local SEO/rollback, image, API adapters.
-- rar-wp-commerce-studio-ai/assets/admin.css — responsive dashboard styling.
+- rar-wp-commerce-studio-ai/assets/admin.css — redesigned professional dark dashboard styling.
 - rar-wp-commerce-studio-ai/assets/admin.js — navigation ScrollSpy and prompt copy.
 - tests/smoke.php — offline PHP sanity checks.
-- .github/workflows/plugin-ci.yml — CI plus installable plugin ZIP artifact.
+- .github/workflows/plugin-ci.yml — PHP compatibility/CI, artifact packaging, and verified GitHub Release publication.
 - docs/ROADMAP.md — implementation status, backlog and risks.
+- docs/RELEASE_NOTES_v0.1.1.md / CHANGELOG.md — release changes, testing, known limitations.
 
 **Repo:** https://github.com/ruhulaminrevens/RAR-WP-Commerce-Studio-AI
 
-GPL-2.0-or-later. No WordPress live deployment is implied by repository commits.
+GPL-2.0-or-later. **NABIAD live website has previously activated v0.1.0 Pilot**; updating GitHub alone does not replace that installed plugin. v0.1.1 deployment and post-update visual validation are separate steps. Do not assume a release has been deployed.
