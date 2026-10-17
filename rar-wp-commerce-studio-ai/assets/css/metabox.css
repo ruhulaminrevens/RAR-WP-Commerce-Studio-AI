@@ -1,0 +1,8 @@
+/* Commerce Studio box on the WooCommerce product editor. */
+#rar-studio-box .rss-mb-list { margin: 0 0 10px; }
+#rar-studio-box .rss-mb-list li { display: flex; gap: 8px; align-items: baseline; margin: 0 0 6px; }
+#rar-studio-box .rss-mb-list span { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 11px; font-weight: 700; flex: none; }
+#rar-studio-box .rss-mb-list .ok span { background: #dff5ea; color: #0b8f5c; }
+#rar-studio-box .rss-mb-list .todo span { background: #fdeee2; color: #b4561a; }
+#rar-studio-box .rss-mb-pending { margin: 0 0 10px; padding: 6px 8px; background: #fff7e6; border-left: 3px solid #d79a1d; }
+#rar-studio-box .rss-mb-actions { display: flex; flex-wrap: wrap; gap: 6px; }

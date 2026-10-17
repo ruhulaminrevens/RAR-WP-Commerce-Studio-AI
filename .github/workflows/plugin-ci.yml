@@ -1,68 +1,236 @@
 name: WordPress Plugin CI
+
 on:
   push:
     branches: [main, "feature/**", "fix/**", "release/**"]
   pull_request:
     branches: [main]
   workflow_dispatch:
+
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PLUGIN: rar-wp-commerce-studio-ai
+
 jobs:
-  php-compat:
-    name: PHP compatibility ${{ matrix.php }}
+  lint:
+    name: Lint + unit (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        php: ['7.4', '8.2']
+        php: ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4']
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
+          extensions: gd, sodium, mbstring
           coverage: none
-      - name: PHP syntax check
-        run: find rar-wp-commerce-studio-ai tests -type f -name '*.php' -exec php -l {} \;
-      - name: Offline plugin smoke tests
-        run: php tests/smoke.php
+      - name: PHP syntax
+        run: |
+          set -e
+          find "$PLUGIN" tests -type f -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+          echo "All PHP files parse on PHP ${{ matrix.php }}"
+      - name: Unit tests (offline)
+        run: php tests/unit/run.php
 
-  php-and-package:
-    name: Validate and package plugin ZIP
+  standards:
+    name: Version, JS syntax, PHP compatibility
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: '8.3'
           coverage: none
-      - name: Confirm release version metadata
+          tools: composer
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Version metadata is consistent
         run: |
-          grep -q 'Version: 0.1.1' rar-wp-commerce-studio-ai/rar-wp-commerce-studio-ai.php
-          grep -q "const VERSION = '0.1.1';" rar-wp-commerce-studio-ai/rar-wp-commerce-studio-ai.php
-      - name: PHP lint and smoke checks
-        run: |
-          find rar-wp-commerce-studio-ai tests -name '*.php' -print -exec php -l {} \;
-          php tests/smoke.php
+          set -e
+          V=$(grep -Po '^\s*\*\s*Version:\s*\K[0-9][0-9.]*' "$PLUGIN/$PLUGIN.php")
+          grep -q "define( 'RAR_STUDIO_VERSION', '$V' );" "$PLUGIN/$PLUGIN.php"
+          grep -q "^Stable tag: $V$" "$PLUGIN/readme.txt"
+          grep -q "## \[$V\]" CHANGELOG.md
+          echo "Version $V consistent in header, constant, readme.txt and CHANGELOG.md"
       - name: JavaScript syntax
-        run: node --check rar-wp-commerce-studio-ai/assets/admin.js
-      - name: Build installable WordPress plugin ZIP
+        run: for f in "$PLUGIN"/assets/js/*.js tests/e2e/*.cjs; do node --check "$f"; done
+      - name: PHPCompatibility 7.4 – 8.5
         run: |
-          zip -qr rar-wp-commerce-studio-ai.zip rar-wp-commerce-studio-ai
-          unzip -l rar-wp-commerce-studio-ai.zip
-          sha256sum rar-wp-commerce-studio-ai.zip > rar-wp-commerce-studio-ai.zip.sha256
+          set -e
+          composer global config --no-plugins allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
+          composer global require --quiet --no-interaction "squizlabs/php_codesniffer:^3.10" "phpcompatibility/php-compatibility:^10.0@dev" "phpcompatibility/phpcompatibility-wp:*" "dealerdirect/phpcodesniffer-composer-installer:^1.0"
+          ~/.composer/vendor/bin/phpcs -q --standard=PHPCompatibilityWP --runtime-set testVersion 7.4-8.5 --extensions=php "$PLUGIN" tests/unit tests/integration \
+            || ~/.config/composer/vendor/bin/phpcs -q --standard=PHPCompatibilityWP --runtime-set testVersion 7.4-8.5 --extensions=php "$PLUGIN" tests/unit tests/integration
+
+  integration:
+    name: WP ${{ matrix.wp }} + WC ${{ matrix.wc }} (PHP ${{ matrix.php }}, HPOS ${{ matrix.hpos }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Oldest supported combination from the plugin header.
+          - { php: '7.4', wp: '6.4', wc: '8.0.0', hpos: 'no' }
+          - { php: '7.4', wp: 'latest', wc: 'latest', hpos: 'yes' }
+          - { php: '8.3', wp: 'latest', wc: 'latest', hpos: 'yes' }
+          - { php: '8.4', wp: 'latest', wc: 'latest', hpos: 'no' }
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: wp
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: gd, sodium, mbstring, mysqli
+          ini-values: memory_limit=256M
+          tools: wp-cli
+          coverage: none
+      - name: Install WordPress + WooCommerce
+        run: |
+          set -e
+          mkdir -p /tmp/wp && cd /tmp/wp
+          if [ "${{ matrix.wp }}" = "latest" ]; then wp core download --quiet; else wp core download --version=${{ matrix.wp }} --quiet; fi
+          wp config create --dbname=wp --dbuser=root --dbpass=root --dbhost=127.0.0.1 --skip-check
+          wp config set WP_ENVIRONMENT_TYPE local
+          wp config set WP_DEBUG true --raw
+          wp core install --url=http://127.0.0.1:8890 --title="Studio CI Shop" --admin_user=admin --admin_password=admin123 --admin_email=ci@example.com --skip-email
+          if [ "${{ matrix.wc }}" = "latest" ]; then wp plugin install woocommerce --activate --quiet; else wp plugin install woocommerce --version=${{ matrix.wc }} --activate --quiet; fi
+          ln -s "$GITHUB_WORKSPACE/$PLUGIN" wp-content/plugins/$PLUGIN
+          wp plugin activate $PLUGIN
+          wp option update woocommerce_custom_orders_table_enabled ${{ matrix.hpos }}
+          wp option update woocommerce_coming_soon no
+          echo "WordPress $(wp core version), WooCommerce $(wp plugin get woocommerce --field=version), PHP ${{ matrix.php }}, HPOS ${{ matrix.hpos }}"
+      - name: Seed fixtures and run integration tests
+        working-directory: /tmp/wp
+        run: |
+          set -e
+          wp eval-file "$GITHUB_WORKSPACE/tests/integration/seed.php"
+          wp eval-file "$GITHUB_WORKSPACE/tests/integration/run.php"
+      - name: Deactivate and uninstall cleanly
+        working-directory: /tmp/wp
+        run: |
+          set -e
+          wp plugin deactivate $PLUGIN
+          wp plugin activate $PLUGIN
+          wp plugin deactivate $PLUGIN
+          wp eval 'echo get_option("rar_studio_settings_v1") ? "settings kept after deactivate\n" : "missing\n";'
+
+  e2e:
+    name: Browser tests (Playwright)
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: wp
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: gd, sodium, mbstring, mysqli
+          ini-values: memory_limit=256M
+          tools: wp-cli
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install WordPress + WooCommerce
+        run: |
+          set -e
+          mkdir -p /tmp/wp && cd /tmp/wp
+          wp core download --quiet
+          wp config create --dbname=wp --dbuser=root --dbpass=root --dbhost=127.0.0.1 --skip-check
+          wp config set WP_ENVIRONMENT_TYPE local
+          wp core install --url=http://127.0.0.1:8890 --title="Studio CI Shop" --admin_user=admin --admin_password=admin123 --admin_email=ci@example.com --skip-email
+          wp plugin install woocommerce --activate --quiet
+          ln -s "$GITHUB_WORKSPACE/$PLUGIN" wp-content/plugins/$PLUGIN
+          wp plugin activate $PLUGIN
+          wp option update woocommerce_coming_soon no
+          wp option update woocommerce_onboarding_profile '{"skipped":true}' --format=json
+          wp transient delete _wc_activation_redirect || true
+          wp eval-file "$GITHUB_WORKSPACE/tests/integration/seed.php" > /dev/null
+          (php -S 127.0.0.1:8890 -t /tmp/wp > /tmp/server.log 2>&1 &)
+          sleep 2
+          curl -fsS -o /dev/null http://127.0.0.1:8890/wp-login.php
+      - name: Install Playwright
+        run: |
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund playwright@1.48.2
+          npx playwright install --with-deps chromium
+      - name: Screens (dark + light, desktop + phone)
+        env:
+          BASE: http://127.0.0.1:8890
+          THEMES: dark,light
+          OUT: /tmp/shots
+        run: node tests/e2e/ui-smoke.cjs
+      - name: User flows
+        env:
+          BASE: http://127.0.0.1:8890
+          OUT: /tmp/shots
+        run: |
+          export IDS=$(cd /tmp/wp && wp option get rss_seed_ids --format=json)
+          node tests/e2e/flows.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-screens
+          path: /tmp/shots
+          if-no-files-found: ignore
+
+  package:
+    name: Build installable ZIP
+    runs-on: ubuntu-latest
+    needs: [lint, standards, integration, e2e]
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: echo "version=$(grep -Po '^\s*\*\s*Version:\s*\K[0-9][0-9.]*' "$PLUGIN/$PLUGIN.php")" >> "$GITHUB_OUTPUT"
+      - name: Build ZIP (plugin folder only, no tests or docs)
+        run: |
+          set -e
+          zip -qr "$PLUGIN.zip" "$PLUGIN" -x '*.DS_Store' -x '*/.git*'
+          unzip -l "$PLUGIN.zip" | tail -n 3
+          unzip -l "$PLUGIN.zip" | grep -q "$PLUGIN/$PLUGIN.php"
+          ! unzip -l "$PLUGIN.zip" | grep -E ' (tests|docs)/'
+          sha256sum "$PLUGIN.zip" > "$PLUGIN.zip.sha256"
+          cat "$PLUGIN.zip.sha256"
       - uses: actions/upload-artifact@v4
         with:
-          name: rar-wp-commerce-studio-ai-plugin-zip
+          name: plugin-zip
           path: |
-            rar-wp-commerce-studio-ai.zip
-            rar-wp-commerce-studio-ai.zip.sha256
+            ${{ env.PLUGIN }}.zip
+            ${{ env.PLUGIN }}.zip.sha256
           if-no-files-found: error
 
-  publish-release:
-    name: Publish v0.1.1 official release
+  release:
+    name: Publish GitHub Release
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [php-compat, php-and-package]
+    needs: [package]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -70,21 +238,24 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: rar-wp-commerce-studio-ai-plugin-zip
-      - name: Create verified GitHub Release (no prerelease)
+          name: plugin-zip
+      - name: Create release (never overwrites an existing one)
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.package.outputs.version }}
         run: |
-          if gh release view v0.1.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "v0.1.1 already exists; preserving tagged release."
+          set -e
+          TAG="v$VERSION"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "$TAG already exists — keeping the published files unchanged."
             exit 0
           fi
-          sha256sum -c rar-wp-commerce-studio-ai.zip.sha256
-          gh release create v0.1.1 \
-            rar-wp-commerce-studio-ai.zip \
-            rar-wp-commerce-studio-ai.zip.sha256 \
+          sha256sum -c "$PLUGIN.zip.sha256"
+          NOTES="docs/RELEASE_NOTES_v$VERSION.md"
+          [ -f "$NOTES" ] || NOTES=CHANGELOG.md
+          gh release create "$TAG" "$PLUGIN.zip" "$PLUGIN.zip.sha256" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "RAR WP Commerce Studio AI v0.1.1" \
-            --notes-file docs/RELEASE_NOTES_v0.1.1.md \
+            --title "RAR WP Commerce Studio AI $TAG" \
+            --notes-file "$NOTES" \
             --latest
