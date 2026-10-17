@@ -12,7 +12,7 @@
 - [x] Single product lookup by numeric ID, permission checks.
 - [x] Deterministic local SEO preview, manual apply and one-step restoration.
 - [x] Copyable product prompt for ChatGPT/Gemini/Claude chat subscriptions.
-- [x] GD white-square product derivative (new JPEG attachment), approve/restore featured image.
+- [x] GD white-square product derivative (new JPEG attachment), with WordPress editor fallback for AVIF and other compatible inputs; approve/restore featured image.
 - [x] Opt-in text API adapters for Gemini/OpenAI/Claude with explicit daily request limit.
 - [x] Fixed provider URLs, nonce, HTTPS, no automatic external requests.
 - [x] PHP lint + offline smoke + JS syntax test in GitHub CI; ZIP packaging workflow.
