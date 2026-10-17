@@ -3,7 +3,7 @@
  * Plugin Name: RAR WP Commerce Studio AI
  * Plugin URI: https://github.com/ruhulaminrevens/RAR-WP-Commerce-Studio-AI
  * Description: Free-first WooCommerce SEO, manual AI workflows, opt-in AI API and reversible product image tools.
- * Version: 0.1.0
+ * Version: 0.1.1
  * Requires at least: 6.4
  * Requires PHP: 7.4
  * Author: RAR
@@ -13,7 +13,7 @@
 defined('ABSPATH') || exit;
 
 final class RAR_WP_Commerce_Studio_AI {
-    const VERSION = '0.1.0';
+    const VERSION = '0.1.1';
     const SLUG = 'rar-wp-commerce-studio-ai';
     const OPTION = 'rar_studio_settings';
     const SEO_KEYS = array('_yoast_wpseo_title', '_yoast_wpseo_metadesc', '_yoast_wpseo_focuskw');

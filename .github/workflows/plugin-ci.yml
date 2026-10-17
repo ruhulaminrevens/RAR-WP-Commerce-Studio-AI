@@ -1,14 +1,34 @@
 name: WordPress Plugin CI
 on:
   push:
-    branches: [main, "feature/**"]
+    branches: [main, "feature/**", "fix/**", "release/**"]
   pull_request:
     branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
+
 jobs:
+  php-compat:
+    name: PHP compatibility ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.2']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: PHP syntax check
+        run: find rar-wp-commerce-studio-ai tests -type f -name '*.php' -exec php -l {} \;
+      - name: Offline plugin smoke tests
+        run: php tests/smoke.php
+
   php-and-package:
+    name: Validate and package plugin ZIP
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,41 +36,55 @@ jobs:
         with:
           php-version: '8.2'
           coverage: none
-      - name: PHP lint
-        run: find rar-wp-commerce-studio-ai -type f -name '*.php' -print -exec php -l {} \;
-      - name: Offline smoke tests
-        run: php tests/smoke.php
+      - name: Confirm release version metadata
+        run: |
+          grep -q 'Version: 0.1.1' rar-wp-commerce-studio-ai/rar-wp-commerce-studio-ai.php
+          grep -q "const VERSION = '0.1.1';" rar-wp-commerce-studio-ai/rar-wp-commerce-studio-ai.php
+      - name: PHP lint and smoke checks
+        run: |
+          find rar-wp-commerce-studio-ai tests -name '*.php' -print -exec php -l {} \;
+          php tests/smoke.php
       - name: JavaScript syntax
         run: node --check rar-wp-commerce-studio-ai/assets/admin.js
-      - name: Build WP-admin installable ZIP
-        run: zip -qr rar-wp-commerce-studio-ai.zip rar-wp-commerce-studio-ai
+      - name: Build installable WordPress plugin ZIP
+        run: |
+          zip -qr rar-wp-commerce-studio-ai.zip rar-wp-commerce-studio-ai
+          unzip -l rar-wp-commerce-studio-ai.zip
+          sha256sum rar-wp-commerce-studio-ai.zip > rar-wp-commerce-studio-ai.zip.sha256
       - uses: actions/upload-artifact@v4
         with:
           name: rar-wp-commerce-studio-ai-plugin-zip
-          path: rar-wp-commerce-studio-ai.zip
+          path: |
+            rar-wp-commerce-studio-ai.zip
+            rar-wp-commerce-studio-ai.zip.sha256
           if-no-files-found: error
 
-  publish-pilot:
+  publish-release:
+    name: Publish v0.1.1 official release
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: php-and-package
+    needs: [php-compat, php-and-package]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: rar-wp-commerce-studio-ai-plugin-zip
-      - name: Publish first pilot ZIP prerelease
+      - name: Create verified GitHub Release (no prerelease)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view v0.1.0-pilot --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Pilot prerelease already exists; preserving immutable snapshot."
-          else
-            gh release create v0.1.0-pilot rar-wp-commerce-studio-ai.zip \
-              --repo "$GITHUB_REPOSITORY" \
-              --target "$GITHUB_SHA" \
-              --title "RAR WP Commerce Studio AI v0.1.0 Pilot" \
-              --notes "Preview build. API OFF by default. Test in staging, take full backups and validate a pilot product before enabling on a live shop." \
-              --prerelease
+          if gh release view v0.1.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "v0.1.1 already exists; preserving tagged release."
+            exit 0
           fi
+          sha256sum -c rar-wp-commerce-studio-ai.zip.sha256
+          gh release create v0.1.1 \
+            rar-wp-commerce-studio-ai.zip \
+            rar-wp-commerce-studio-ai.zip.sha256 \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "RAR WP Commerce Studio AI v0.1.1" \
+            --notes-file docs/RELEASE_NOTES_v0.1.1.md \
+            --latest
