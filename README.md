@@ -116,7 +116,7 @@ Frontend: the plugin loads **nothing** on the shop front end.
 | Browser user flows (generate → review → apply → rollback, images, bulk, security) | 39 / 39 |
 | PHPCompatibility 7.4–8.5, WordPress security sniffs | 0 errors, 0 warnings |
 
-AI provider calls are tested with mocked HTTP responses; live keys were not used. See **[docs/TESTING.md](docs/TESTING.md)**.
+GitHub Actions repeats everything on MariaDB with real Yoast SEO — from the oldest supported stack (PHP 7.4 + WordPress 6.4 + WooCommerce 8.0) to the latest (PHP 8.4 + WordPress 7.1 + WooCommerce 11). AI provider calls are tested with mocked HTTP responses; live keys were not used. See **[docs/TESTING.md](docs/TESTING.md)**.
 
 ## Documentation
 

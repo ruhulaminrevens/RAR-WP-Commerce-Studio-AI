@@ -26,12 +26,12 @@ Going back to 0.1.1: upload the 0.1.1 ZIP from the releases page the same way. I
 
 ## Tested
 
-Unit 60/60 · Integration on WordPress 7.1 + WooCommerce 11.2, HPOS on/off 200/200 · Browser screens 36/36 · Browser flows 39/39 · PHPCompatibility 7.4–8.5 clean. CI adds PHP 7.4–8.4, MariaDB, WordPress 6.4 + WooCommerce 8.0 and the latest stack.
+Unit 60/60 · Integration on WordPress 7.1 + WooCommerce 11.2, HPOS on/off 200/200 · Browser screens 36/36 · Browser flows 39/39 · PHPCompatibility 7.4–8.5 clean. CI (green) adds PHP 7.4–8.4, MariaDB, real Yoast SEO, WordPress 6.4 + WooCommerce 8.0 and the latest stack.
 
 ## Known limits
 
 - AI providers were tested with mocked responses only; test your own key on one product first.
-- Real Yoast / Rank Math / SEOPress and theme/page-builder combinations should be checked on staging.
+- Rank Math / SEOPress and your theme/page-builder combination should be checked on staging.
 - Background removal works on plain backgrounds only (by design — it refuses busy photos rather than guessing).
 - Reference model prices are estimates; check provider pricing.
 

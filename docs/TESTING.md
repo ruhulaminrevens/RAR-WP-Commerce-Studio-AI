@@ -29,7 +29,7 @@ Local: WordPress 7.1.3, WooCommerce 11.2.1, PHP 8.3, SQLite; HPOS on and off.
 | WordPress security sniffs (escaping, nonces, sanitising, prepared SQL) | clean |
 | Uninstall on a database copy | keeps data by default; removes 5 tables + options when enabled |
 
-CI (GitHub Actions) repeats lint + unit on PHP 7.4 – 8.4, integration on MariaDB 10.11 with the oldest supported stack (PHP 7.4, WordPress 6.4, WooCommerce 8.0) and the latest stack with HPOS on/off, and the browser suites.
+CI (GitHub Actions, all green for 1.0.0) repeats lint + unit on PHP 7.4 – 8.4, PHPCompatibility, the integration suite on MariaDB 10.11 with **real Yoast SEO** — oldest supported stack (PHP 7.4, WordPress 6.4, WooCommerce 8.0, Yoast 22.0) and the latest stack (WordPress 7.1, WooCommerce 11.x) on PHP 7.4, 8.3 and 8.4 with HPOS on and off — and both browser suites.
 
 ### Performance (local, PHP 8.3)
 
@@ -45,7 +45,7 @@ CI (GitHub Actions) repeats lint + unit on PHP 7.4 – 8.4, integration on Maria
 ## Not covered by automated tests
 
 - Real API calls to Gemini, OpenAI and Claude (all HTTP is mocked; no keys were used).
-- The real Yoast SEO / Rank Math / SEOPress plugins (meta keys are tested; plugin UIs are not).
+- Rank Math and SEOPress run only as meta-key adapters in tests (Yoast SEO is installed for real in CI).
 - Your theme and plugin mix (Woodmart, Elementor, LiteSpeed Cache …) — check on staging.
 
 ## Manual checklist for a new site
