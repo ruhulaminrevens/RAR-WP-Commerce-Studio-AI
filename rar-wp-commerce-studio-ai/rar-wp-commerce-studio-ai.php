@@ -297,7 +297,10 @@ final class RAR_WP_Commerce_Studio_AI {
         $id = $product->get_id();
         $draft = self::image_preview_id($id);
         if (!$draft) { self::redirect($id, 'bad_image'); }
-        update_post_meta($id, '_rar_studio_image_previous_id', absint($product->get_image_id()));
+        // Preserve the pre-Studio image across more than one approved derivative.
+        if (!metadata_exists('post', $id, '_rar_studio_image_previous_id')) {
+            update_post_meta($id, '_rar_studio_image_previous_id', absint($product->get_image_id()));
+        }
         $product->set_image_id($draft);
         $product->save();
         delete_post_meta($id, '_rar_studio_image_draft_id');
