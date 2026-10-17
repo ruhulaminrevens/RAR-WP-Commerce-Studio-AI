@@ -126,6 +126,9 @@ function rss_seed_image( $name, $bg, $format, $w, $h, $label, $parent = 0 ) {
  * Term helper.
  */
 function rss_seed_term( $name, $tax ) {
+	if ( ! taxonomy_exists( $tax ) ) {
+		return 0; // e.g. product_brand before WooCommerce 9.6.
+	}
 	$t = term_exists( $name, $tax );
 	if ( ! $t ) {
 		$t = wp_insert_term( $name, $tax );
@@ -174,7 +177,7 @@ function rss_seed_product( array $a ) {
 	}
 	$id = $p->save();
 	update_post_meta( $id, '_rss_seed', 1 );
-	if ( ! empty( $a['brand'] ) ) {
+	if ( ! empty( $a['brand'] ) && taxonomy_exists( 'product_brand' ) ) {
 		wp_set_object_terms( $id, array( $a['brand'] ), 'product_brand' );
 	}
 	return $id;

@@ -278,7 +278,9 @@ $by  = array();
 foreach ( $res['drafts'] as $d ) {
 	$by[ $d['field'] ] = $d;
 }
-rss_ok( isset( $by['title'] ) && 'Al-Arab Arabian Oud Perfume 100ml' === $by['title']['proposed'], 'title cleaned + brand added', $by['title']['proposed'] ?? '' );
+// WooCommerce < 9.6 has no product_brand taxonomy, so no brand prefix there.
+$want_title = taxonomy_exists( 'product_brand' ) ? 'Al-Arab Arabian Oud Perfume 100ml' : 'Arabian Oud Perfume 100ml';
+rss_ok( isset( $by['title'] ) && $want_title === $by['title']['proposed'], 'title cleaned' . ( taxonomy_exists( 'product_brand' ) ? ' + brand added' : ' (no brand taxonomy)' ), $by['title']['proposed'] ?? '' );
 rss_ok( isset( $by['description'] ) && false !== strpos( $by['description']['proposed'], '<table' ) && false !== strpos( $by['description']['proposed'], 'Eau de Parfum' ), 'description gets spec table from own data' );
 rss_ok( isset( $by['seo_title'] ) && Util_len( $by['seo_title']['proposed'] ) <= 60, 'SEO title within 60 chars' );
 rss_ok( isset( $by['seo_description'] ) && Util_len( $by['seo_description']['proposed'] ) <= 155, 'meta description within 155 chars' );
@@ -288,7 +290,7 @@ foreach ( $by as $f => $d ) {
 rss_eq( wc_get_product( $ids['oud'] )->get_name(), 'ARABIAN OUD PERFUME 100ML', 'generation alone changes nothing' );
 $a = Drafts::apply( $by['title']['id'] );
 rss_ok( ! is_wp_error( $a ) && 'applied' === $a['status'], 'apply title' );
-rss_eq( wc_get_product( $ids['oud'] )->get_name(), 'Al-Arab Arabian Oud Perfume 100ml', 'title written' );
+rss_eq( wc_get_product( $ids['oud'] )->get_name(), $want_title, 'title written' );
 rss_err( Drafts::apply( $by['title']['id'] ), 'rar_draft_state', 'second apply refused' );
 $a = Drafts::apply( $by['seo_description']['id'] );
 rss_eq( get_post_meta( $ids['oud'], '_yoast_wpseo_metadesc', true ), $by['seo_description']['proposed'], 'meta description written to Yoast field' );

@@ -75,17 +75,17 @@ jobs:
           bash .github/scripts/run-annotated.sh "PHPCompatibility" /tmp/sniff/vendor/bin/phpcs -q --standard=PHPCompatibility --runtime-set testVersion 7.4-8.5 --extensions=php "$PLUGIN" tests/unit tests/integration
 
   integration:
-    name: WP ${{ matrix.wp }} + WC ${{ matrix.wc }} (PHP ${{ matrix.php }}, HPOS ${{ matrix.hpos }})
+    name: WP ${{ matrix.wp }} + WC ${{ matrix.wc }} + Yoast ${{ matrix.yoast }} (PHP ${{ matrix.php }}, HPOS ${{ matrix.hpos }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
           # Oldest supported combination from the plugin header.
-          - { php: '7.4', wp: '6.4', wc: '8.0.0', hpos: 'no' }
-          - { php: '7.4', wp: 'latest', wc: 'latest', hpos: 'yes' }
-          - { php: '8.3', wp: 'latest', wc: 'latest', hpos: 'yes' }
-          - { php: '8.4', wp: 'latest', wc: 'latest', hpos: 'no' }
+          - { php: '7.4', wp: '6.4', wc: '8.0.0', yoast: '22.0', hpos: 'no' }
+          - { php: '7.4', wp: 'latest', wc: 'latest', yoast: 'latest', hpos: 'yes' }
+          - { php: '8.3', wp: 'latest', wc: 'latest', yoast: 'latest', hpos: 'yes' }
+          - { php: '8.4', wp: 'latest', wc: 'latest', yoast: 'latest', hpos: 'no' }
     services:
       mariadb:
         image: mariadb:10.11
@@ -115,11 +115,13 @@ jobs:
           wp config set WP_DEBUG true --raw
           wp core install --url=http://127.0.0.1:8890 --title="Studio CI Shop" --admin_user=admin --admin_password=admin123 --admin_email=ci@example.com --skip-email
           if [ "${{ matrix.wc }}" = "latest" ]; then wp plugin install woocommerce --activate --quiet; else wp plugin install woocommerce --version=${{ matrix.wc }} --activate --quiet; fi
+          # Real Yoast SEO, so SEO fields are written through a real SEO plugin.
+          if [ "${{ matrix.yoast }}" = "latest" ]; then wp plugin install wordpress-seo --activate --quiet; else wp plugin install wordpress-seo --version=${{ matrix.yoast }} --activate --quiet; fi
           ln -s "$GITHUB_WORKSPACE/$PLUGIN" wp-content/plugins/$PLUGIN
           wp plugin activate $PLUGIN
           wp option update woocommerce_custom_orders_table_enabled ${{ matrix.hpos }}
           wp option update woocommerce_coming_soon no
-          echo "WordPress $(wp core version), WooCommerce $(wp plugin get woocommerce --field=version), PHP ${{ matrix.php }}, HPOS ${{ matrix.hpos }}"
+          echo "WordPress $(wp core version), WooCommerce $(wp plugin get woocommerce --field=version), Yoast $(wp plugin get wordpress-seo --field=version), PHP ${{ matrix.php }}, HPOS ${{ matrix.hpos }}"
       - name: Seed fixtures and run integration tests
         working-directory: /tmp/wp
         run: |
@@ -169,6 +171,8 @@ jobs:
           wp config set WP_ENVIRONMENT_TYPE local
           wp core install --url=http://127.0.0.1:8890 --title="Studio CI Shop" --admin_user=admin --admin_password=admin123 --admin_email=ci@example.com --skip-email
           wp plugin install woocommerce --activate --quiet
+          wp plugin install wordpress-seo --activate --quiet
+          wp eval 'if ( class_exists( "WPSEO_Options" ) ) { WPSEO_Options::set( "should_redirect_after_install_free", false ); }' || true
           ln -s "$GITHUB_WORKSPACE/$PLUGIN" wp-content/plugins/$PLUGIN
           wp plugin activate $PLUGIN
           wp option update woocommerce_coming_soon no
