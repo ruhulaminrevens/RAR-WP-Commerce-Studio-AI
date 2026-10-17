@@ -1,0 +1,56 @@
+name: WordPress Plugin CI
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  php-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - name: PHP lint
+        run: find rar-wp-commerce-studio-ai -type f -name '*.php' -print -exec php -l {} \;
+      - name: Offline smoke tests
+        run: php tests/smoke.php
+      - name: JavaScript syntax
+        run: node --check rar-wp-commerce-studio-ai/assets/admin.js
+      - name: Build WP-admin installable ZIP
+        run: zip -qr rar-wp-commerce-studio-ai.zip rar-wp-commerce-studio-ai
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rar-wp-commerce-studio-ai-plugin-zip
+          path: rar-wp-commerce-studio-ai.zip
+          if-no-files-found: error
+
+  publish-pilot:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: php-and-package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: rar-wp-commerce-studio-ai-plugin-zip
+      - name: Publish first pilot ZIP prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v0.1.0-pilot --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Pilot prerelease already exists; preserving immutable snapshot."
+          else
+            gh release create v0.1.0-pilot rar-wp-commerce-studio-ai.zip \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "RAR WP Commerce Studio AI v0.1.0 Pilot" \
+              --notes "Preview build. API OFF by default. Test in staging, take full backups and validate a pilot product before enabling on a live shop." \
+              --prerelease
+          fi
