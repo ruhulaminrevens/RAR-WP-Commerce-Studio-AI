@@ -212,6 +212,8 @@ final class RAR_WP_Commerce_Studio_AI {
     }
 
     public static function generate_api() {
+        // Only site administrators may initiate potentially billable requests.
+        if (!current_user_can('manage_options')) { wp_die('API access restricted to administrators.', '', array('response' => 403)); }
         $product = self::require_product();
         $config = self::settings();
         $provider = $config['provider'];
@@ -413,7 +415,7 @@ final class RAR_WP_Commerce_Studio_AI {
             }
             echo '<button class="button button-primary">Save API settings</button></form>';
         }
-        if ($product) {
+        if ($product && current_user_can('manage_options')) {
             echo '<p><strong>Generate a paid/free-tier API preview only when ready:</strong></p>';
             self::form('generate_api', $id, 'Generate via selected API (counts as request)');
         }
