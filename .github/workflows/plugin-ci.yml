@@ -26,7 +26,7 @@ jobs:
       matrix:
         php: ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
@@ -44,13 +44,13 @@ jobs:
     name: Version, JS syntax, PHP compatibility
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
           coverage: none
           tools: composer
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '20'
       - name: Version metadata is consistent
@@ -66,10 +66,13 @@ jobs:
       - name: PHPCompatibility 7.4 – 8.5
         run: |
           set -e
-          composer global config --no-plugins allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
-          composer global require --quiet --no-interaction "squizlabs/php_codesniffer:^3.10" "phpcompatibility/php-compatibility:^10.0@dev" "phpcompatibility/phpcompatibility-wp:*" "dealerdirect/phpcodesniffer-composer-installer:^1.0"
-          ~/.composer/vendor/bin/phpcs -q --standard=PHPCompatibilityWP --runtime-set testVersion 7.4-8.5 --extensions=php "$PLUGIN" tests/unit tests/integration \
-            || ~/.config/composer/vendor/bin/phpcs -q --standard=PHPCompatibilityWP --runtime-set testVersion 7.4-8.5 --extensions=php "$PLUGIN" tests/unit tests/integration
+          mkdir -p /tmp/sniff && cd /tmp/sniff
+          composer init -n --name=ci/sniff --stability=dev > /dev/null
+          composer config prefer-stable true
+          composer config allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
+          composer require -n --quiet "phpcompatibility/php-compatibility:dev-develop" "dealerdirect/phpcodesniffer-composer-installer:^1.0"
+          cd "$GITHUB_WORKSPACE"
+          bash .github/scripts/run-annotated.sh "PHPCompatibility" /tmp/sniff/vendor/bin/phpcs -q --standard=PHPCompatibility --runtime-set testVersion 7.4-8.5 --extensions=php "$PLUGIN" tests/unit tests/integration
 
   integration:
     name: WP ${{ matrix.wp }} + WC ${{ matrix.wc }} (PHP ${{ matrix.php }}, HPOS ${{ matrix.hpos }})
@@ -94,7 +97,7 @@ jobs:
           --health-cmd="healthcheck.sh --connect --innodb_initialized"
           --health-interval=5s --health-timeout=5s --health-retries=20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
@@ -121,8 +124,8 @@ jobs:
         working-directory: /tmp/wp
         run: |
           set -e
-          wp eval-file "$GITHUB_WORKSPACE/tests/integration/seed.php"
-          wp eval-file "$GITHUB_WORKSPACE/tests/integration/run.php"
+          bash "$GITHUB_WORKSPACE/.github/scripts/run-annotated.sh" "Seed" wp eval-file "$GITHUB_WORKSPACE/tests/integration/seed.php"
+          bash "$GITHUB_WORKSPACE/.github/scripts/run-annotated.sh" "Integration" wp eval-file "$GITHUB_WORKSPACE/tests/integration/run.php"
       - name: Deactivate and uninstall cleanly
         working-directory: /tmp/wp
         run: |
@@ -146,7 +149,7 @@ jobs:
           --health-cmd="healthcheck.sh --connect --innodb_initialized"
           --health-interval=5s --health-timeout=5s --health-retries=20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
@@ -154,7 +157,7 @@ jobs:
           ini-values: memory_limit=256M
           tools: wp-cli
           coverage: none
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '20'
       - name: Install WordPress + WooCommerce
@@ -171,7 +174,7 @@ jobs:
           wp option update woocommerce_coming_soon no
           wp option update woocommerce_onboarding_profile '{"skipped":true}' --format=json
           wp transient delete _wc_activation_redirect || true
-          wp eval-file "$GITHUB_WORKSPACE/tests/integration/seed.php" > /dev/null
+          bash "$GITHUB_WORKSPACE/.github/scripts/run-annotated.sh" "Seed" wp eval-file "$GITHUB_WORKSPACE/tests/integration/seed.php" > /dev/null
           (php -S 127.0.0.1:8890 -t /tmp/wp > /tmp/server.log 2>&1 &)
           sleep 2
           curl -fsS -o /dev/null http://127.0.0.1:8890/wp-login.php
@@ -185,14 +188,17 @@ jobs:
           BASE: http://127.0.0.1:8890
           THEMES: dark,light
           OUT: /tmp/shots
-        run: node tests/e2e/ui-smoke.cjs
+        run: bash .github/scripts/run-annotated.sh "Screens" node tests/e2e/ui-smoke.cjs
       - name: User flows
         env:
           BASE: http://127.0.0.1:8890
           OUT: /tmp/shots
         run: |
           export IDS=$(cd /tmp/wp && wp option get rss_seed_ids --format=json)
-          node tests/e2e/flows.cjs
+          bash .github/scripts/run-annotated.sh "Flows" node tests/e2e/flows.cjs
+      - name: Server log on failure
+        if: failure()
+        run: tail -n 40 /tmp/server.log | sed -e 's/%/%25/g' | awk 'BEGIN{ORS="%0A"; printf "::error title=PHP server log::"} {print}'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -207,7 +213,7 @@ jobs:
     outputs:
       version: ${{ steps.v.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: v
         run: echo "version=$(grep -Po '^\s*\*\s*Version:\s*\K[0-9][0-9.]*' "$PLUGIN/$PLUGIN.php")" >> "$GITHUB_OUTPUT"
       - name: Build ZIP (plugin folder only, no tests or docs)
@@ -235,7 +241,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/download-artifact@v4
         with:
           name: plugin-zip
