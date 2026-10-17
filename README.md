@@ -74,7 +74,7 @@ Each new settings save requires cost acknowledgement again. Failed calls count t
 - Writes limited to reviewed Yoast metadata and featured-image reference; no price/stock/order/SKU modifications.
 - SEO preview expires after 30 minutes and rejects a changed product fingerprint.
 - Original image bytes remain untouched; derivative is a new Media Library file.
-- Local JPEG/PNG/WebP input when supported by PHP GD, maximum source file 15 MB, maximum 16 million pixels.
+- Local JPEG/PNG/WebP input via PHP GD; AVIF and other supported formats use WordPress image-editor/Imagick conversion fallback where available. Maximum source file 15 MB, maximum 16 million pixels.
 - 800x800 output is JPEG on a white canvas (this first milestone does **not** output WebP).
 - Separate derivative media may occupy hosting space and is not auto-deleted.
 
